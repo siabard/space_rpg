@@ -4,6 +4,10 @@ import "core:fmt"
 import "core:math/linalg"
 import sdl "vendor:sdl2" 
 
+import im "odin-imgui"
+import im_sdl2 "odin-imgui/imgui_impl_sdl2"
+import im_sdlrenderer2 "odin-imgui/imgui_impl_sdlrenderer2"
+
 // 1. 기초 데이터 및 타입 알리아스 
 Vec2 :: linalg.Vector2f32
 
@@ -47,11 +51,13 @@ Planet :: struct {
 // 3. 태그 유니온 (상태관리) 
 
 UI_State :: union {
+    State_MainMenu,
     State_Sailing,
     State_Docked,
     State_Combat,
 }
 
+State_MainMenu :: struct {}
 State_Sailing :: struct {}
 State_Docked :: struct { docked_planet_id: u32}
 State_Combat :: struct { target_ship_id: u32, turn_timer: u32}
@@ -98,12 +104,70 @@ check_encounters :: proc(ctx: ^Game_Context) {
     }
 }
 
-main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) {
+main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) -> bool {
+
+    running := true
+    // IMGUI 새 프레임 시작 
+    im_sdlrenderer2.NewFrame()
+    im_sdl2.NewFrame()
+    im.NewFrame()
 
     // B. 게임 로직 업데이트 
     switch state in ctx.current_state {
+    case State_MainMenu:
+	// -- 메인 메뉴 UI -- 
+	im.SetNextWindowPos(im.Vec2{250, 200}, .Always, im.Vec2{0.5, 0.5})
+	im.SetNextWindowSize(im.Vec2{300, 200}, .Always)
+
+	// 타이틀 바나 크기 조절없는 순수 메뉴 창 
+	window_flags := im.WindowFlags_NoDecoration
+	im.Begin("Main Menu", nil, window_flags)
+	// 텍스트 가운데 맞춤 
+	im.SetCursorPosX(70)
+	im.Text("SPACE RPG - 대항해시대")
+	im.Spacing()
+	im.Spacing()
+	im.Spacing()
+
+	// 시작버튼 
+	im.SetCursorPosX(50)
+	if im.Button("게임 시작 (Start Game)", im.Vec2{200, 40}) {
+
+	    // 게임 시작 버튼을 누름 
+
+	    // 플레이어 우주선 설정 (0번 우주선)
+	    append(&ctx.ships, Ship {
+		id = 0,
+		position = {400, 300},
+		velocity = {50, 20}, 
+		faction = .Player,
+		max_hp = 100,
+		hull_hp = 100,
+	    })
+	    ctx.current_state = State_Sailing {}
+	}
+	im.Spacing()
+
+	// 종료 버튼 
+	im.SetCursorPosX(50)
+	if im.Button("게임 종료 (Exit)", im.Vec2{200, 40}) {
+	    running = false
+	}
+	im.End()
+
     case State_Sailing:
 	update_physics(ctx, dt)
+
+	// 항해중 ESC를 누르면 메뉴 노출 
+	im.SetNextWindowPos(im.Vec2{10, 10}, .Always)
+	im.Begin("항해 UI", nil, im.WindowFlags_NoDecoration)
+	im.Text("항해 중 ... (Sailing)")
+	if im.Button("메인 메뉴로 돌아가기") {
+	    // 배열 삭제 
+	    clear(&ctx.ships)
+	    ctx.current_state = State_MainMenu {}
+	}
+	im.End()
 
     case State_Docked:
 	//
@@ -133,7 +197,13 @@ main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) {
 	}
 	sdl.RenderFillRect(renderer, &rect)
     }
+
+    // UI렌더링 
+    im.Render()
+    im_sdlrenderer2.RenderDrawData(im.GetDrawData(), renderer)
     sdl.RenderPresent(renderer)
+
+    return running
 }
 
 
@@ -176,11 +246,32 @@ main :: proc() {
 
     defer sdl.DestroyRenderer(renderer)
 
+    // imgui context 설정 
+    im.CHECKVERSION()
+    im.CreateContext(nil)
+    defer im.DestroyContext(nil)
+
+
+    // 키보드 및 게임패드 활성화 
+    io := im.GetIO()
+    io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
+
+    // 기본 테마 
+    im.StyleColorsDark(nil)
+
+    // IMGUI 백엔드 연동 
+    im_sdl2.InitForSDLRenderer(window, renderer)
+    defer im_sdl2.Shutdown()
+
+    im_sdlrenderer2.Init(renderer)
+    defer im_sdlrenderer2.Shutdown()
+    
     // SDL 초기화 루틴 종료 
 
-    // Game Context 설정 
+    // == Game Context 설정  ==
+    // 초기에는 MainMenu로 설정 
     ctx := Game_Context {
-	current_state = State_Sailing {},
+	current_state = State_MainMenu {},
     }
 
     ctx.ships = make([dynamic]Ship)
@@ -189,15 +280,6 @@ main :: proc() {
     ctx.planets = make([dynamic]Planet)
     defer delete(ctx.planets)
 
-    // 플레이어 우주선 설정 (0번 우주선)
-    append(&ctx.ships, Ship {
-	id = 0,
-	position = {400, 300},
-	velocity = {50, 20}, 
-	faction = .Player,
-	max_hp = 100,
-	hull_hp = 100,
-    })
 
     fmt.println("초기화 완료. 플레이어 함선 수", len(ctx.ships))
 
@@ -216,20 +298,15 @@ main :: proc() {
 
 	// A. 입력 및 이벤트 추러 (Polling)
 	for sdl.PollEvent(&event) {
-
+	    im_sdl2.ProcessEvent(&event)
 	    #partial switch event.type {
 		case .QUIT:
 		running = false 
-
-		case .KEYDOWN:
-		if event.key.keysym.sym == .ESCAPE {
-		    running = false
-
-		}
+		
 
 	    }
 	}
-	main_loop(renderer, &ctx, dt)
+	running = main_loop(renderer, &ctx, dt)
     }
 
 }
