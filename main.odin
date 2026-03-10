@@ -104,7 +104,7 @@ check_encounters :: proc(ctx: ^Game_Context) {
     }
 }
 
-main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) -> bool {
+main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
 
     running := true
     // IMGUI 새 프레임 시작 
@@ -274,7 +274,7 @@ init :: proc() {
     
     // == Game Context 설정  ==
     // 초기에는 MainMenu 로 설정 
-    ctx := Game_Context {
+    ctx = Game_Context {
 	current_state = State_MainMenu {},
 	renderer = renderer,
     }
@@ -288,6 +288,9 @@ init :: proc() {
 
     fmt.println("초기화 완료. 플레이어 함선 수", len(ctx.ships))
 }
+
+// 전역 게임 컨텍스트
+var ctx: Game_Context
 
 // 메인 함수
 main :: proc() {
