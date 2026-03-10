@@ -69,7 +69,7 @@ Game_Context :: struct {
     planets: [dynamic]Planet, // 모든 행성 
     current_state: UI_State, // 현재 게임 상태 (항해, 정박, 전투)
     next_entity_id: u32,
-    
+    renderer: sdl.Renderer, // 렌더러를 포함
 }
 
 // 5. 로직 파이프라인 
@@ -177,8 +177,8 @@ main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) -> bool 
     }
 
     // 렌더링 
-    sdl.SetRenderDrawColor(renderer, 15, 15, 25, 255)
-    sdl.RenderClear(renderer)
+    sdl.SetRenderDrawColor(ctx.renderer, 15, 15, 25, 255)
+    sdl.RenderClear(ctx.renderer)
 
 
     // 함선 렌더링 
@@ -200,14 +200,15 @@ main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) -> bool 
 
     // UI 렌더링 
     im.Render()
-    im_sdlrenderer2.RenderDrawData(im.GetDrawData(), renderer)
-    sdl.RenderPresent(renderer)
+    im_sdlrenderer2.RenderDrawData(im.GetDrawData(), ctx.renderer)
+    sdl.RenderPresent(ctx.renderer)
 
     return running
 }
 
 
-main :: proc() {
+// 초기화 함수
+init :: proc() {
     fmt.println("초기화 중...")
 
     // SDL 초기화 루틴 
@@ -221,7 +222,6 @@ main :: proc() {
 
     // window, renderer 생성 
     window := sdl.CreateWindow(
-
 	"Space RPG - Uncharted space ", 
 	sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
 	800, 600,
@@ -238,9 +238,7 @@ main :: proc() {
 
     renderer := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
     if renderer == nil {
-
 	fmt.eprintfln("렌더러 생성 실패 %s", sdl.GetError())
-
 	return 
     }
 
@@ -274,12 +272,11 @@ main :: proc() {
     im_sdlrenderer2.Init(renderer)
     defer im_sdlrenderer2.Shutdown()
     
-    // SDL 초기화 루틴 종료 
-
     // == Game Context 설정  ==
     // 초기에는 MainMenu 로 설정 
     ctx := Game_Context {
 	current_state = State_MainMenu {},
+	renderer = renderer,
     }
 
     ctx.ships = make([dynamic]Ship)
@@ -290,9 +287,13 @@ main :: proc() {
 
 
     fmt.println("초기화 완료. 플레이어 함선 수", len(ctx.ships))
+}
+
+// 메인 함수
+main :: proc() {
+    init()
 
     // 메인 루프 
-
     running := true 
     event: sdl.Event
     last_time := sdl.GetTicks() 
@@ -314,7 +315,6 @@ main :: proc() {
 
 	    }
 	}
-	running = main_loop(renderer, &ctx, dt)
+	running = main_loop(&event, &ctx, dt)
     }
-
 }
