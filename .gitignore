@@ -1,3 +1,6 @@
 #*
 space_rpg
 *dSYM/
+odin-imgui
+.aider*
+.env

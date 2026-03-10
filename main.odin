@@ -8,73 +8,6 @@ import im "odin-imgui"
 import im_sdl2 "odin-imgui/imgui_impl_sdl2"
 import im_sdlrenderer2 "odin-imgui/imgui_impl_sdlrenderer2"
 
-// 전역 게임 컨텍스트
-var ctx: Game_Context
-
-// 1. 기초 데이터 및 타입 알리아스 
-Vec2 :: linalg.Vector2f32
-
-Faction :: enum {
-    Player,
-    Pirate,
-    Merchant,
-    Navy,
-}
-
-Item_Type :: enum {
-    Food,
-    Water,
-    Spice,
-    Machinery,
-    // 이후 필요 교역품 추가 
-
-}
-
-// 2. 핵심 엔터티 구조체 (AoS: Array of Structs)
-
-Ship :: struct {
-    id: u32,
-    position: Vec2,
-    velocity: Vec2,
-    faction: Faction,
-    hull_hp: f32,
-    max_hp: f32,
-    // 교역품 인벤토리 (고정 크기 배열로 메모리 할당/해제 비용 제거)
-    cargo: [Item_Type]int,
-}
-
-Planet :: struct {
-    id: u32,
-    position: Vec2,
-    name: string,
-    // 행성별 교역품 시세 (0이하는 해당 상품 판매 안함)
-    market_data: [Item_Type]f32,
-}
-
-// 3. 태그 유니온 (상태관리) 
-
-UI_State :: union {
-    State_MainMenu,
-    State_Sailing,
-    State_Docked,
-    State_Combat,
-}
-
-State_MainMenu :: struct {}
-State_Sailing :: struct {}
-State_Docked :: struct { docked_planet_id: u32}
-State_Combat :: struct { target_ship_id: u32, turn_timer: u32}
-
-// 4. 전역 게임 컨텍스트 
-// 모든 게임 상태를 한 곳에 모은다. 
-Game_Context :: struct {
-    ships: [dynamic]Ship, // 모든 우주선 (동적 배열)
-    planets: [dynamic]Planet, // 모든 행성 
-    current_state: UI_State, // 현재 게임 상태 (항해, 정박, 전투)
-    next_entity_id: u32,
-    renderer: sdl.Renderer, // 렌더러를 포함
-}
-
 // 5. 로직 파이프라인 
 
 update_physics :: proc(ctx: ^Game_Context, dt: f32) {
@@ -116,6 +49,7 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
     im.NewFrame()
 
     // B. 게임 로직 업데이트 
+
     switch state in ctx.current_state {
     case State_MainMenu:
 	// -- 메인 메뉴 UI -- 
@@ -187,9 +121,9 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
     // 함선 렌더링 
     for &ship in ctx.ships {
 	if ship.faction == .Player {
-	    sdl.SetRenderDrawColor(renderer, 0, 255, 100, 255) // 민트색 (플레이어) 
+	    sdl.SetRenderDrawColor(ctx.renderer, 0, 255, 100, 255) // 민트색 (플레이어) 
 	} else {
-	    sdl.SetRenderDrawColor(renderer, 255, 50, 50, 255) // 붉은색 (적)
+	    sdl.SetRenderDrawColor(ctx.renderer, 255, 50, 50, 255) // 붉은색 (적)
 	}
 
 	rect := sdl.Rect {
@@ -198,7 +132,7 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
 	    w = 20, 
 	    h = 20,
 	}
-	sdl.RenderFillRect(renderer, &rect)
+	sdl.RenderFillRect(ctx.renderer, &rect)
     }
 
     // UI 렌더링 
@@ -211,90 +145,15 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
 
 
 // 초기화 함수
-init :: proc() {
-    fmt.println("초기화 중...")
-
-    // SDL 초기화 루틴 
-    if sdl.Init(sdl.INIT_VIDEO) != 0 {
-	fmt.eprintfln("SDL 초기화 실패 :%s", sdl.GetError())
-	return
-    }
-
-    defer sdl.Quit() 
-
-
-    // window, renderer 생성 
-    window := sdl.CreateWindow(
-	"Space RPG - Uncharted space ", 
-	sdl.WINDOWPOS_CENTERED, sdl.WINDOWPOS_CENTERED,
-	800, 600,
-	sdl.WINDOW_SHOWN,
-    )
-
-    if window == nil {
-	fmt.eprintfln("윈도우 생성 실패 %s", sdl.GetError())
-	return
-    }
-
-    defer sdl.DestroyWindow(window)
-
-
-    renderer := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED | sdl.RENDERER_PRESENTVSYNC)
-    if renderer == nil {
-	fmt.eprintfln("렌더러 생성 실패 %s", sdl.GetError())
-	return 
-    }
-
-    defer sdl.DestroyRenderer(renderer)
-
-    // imgui context 설정 
-    im.CHECKVERSION()
-    im.CreateContext(nil)
-    defer im.DestroyContext(nil)
-
-    // 키보드 및 게임패드 활성화 
-    io := im.GetIO()
-    io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
-
-    // 한국어 유니코드 범위 포인터 (U+AC00 ~ U+D7A3 등)
-    korean_ranges := im.FontAtlas_GetGlyphRangesKorean(io.Fonts)
-
-    // TTF 파일 경로 (Odin 문자열을 C 호환 문자열로 변환)
-    font_path := cstring("assets/fonts/spoqa/SpoqaHanSansNeo-Medium.ttf")
-
-    // 폰트 로드 (가독성을 위해 18.0 설정 )
-    im.FontAtlas_AddFontFromFileTTF(io.Fonts, font_path, 18.0, nil, korean_ranges)
-
-    // 기본 테마 
-    im.StyleColorsDark(nil)
-
-    // IMGUI 백엔드 연동 
-    im_sdl2.InitForSDLRenderer(window, renderer)
-    defer im_sdl2.Shutdown()
-
-    im_sdlrenderer2.Init(renderer)
-    defer im_sdlrenderer2.Shutdown()
-    
-    // == Game Context 설정  ==
-    // 초기에는 MainMenu 로 설정 
-    ctx = Game_Context {
-	current_state = State_MainMenu {},
-	renderer = renderer,
-    }
-
-    ctx.ships = make([dynamic]Ship)
-    defer delete(ctx.ships)
-
-    ctx.planets = make([dynamic]Planet)
-    defer delete(ctx.planets)
-
-
-    fmt.println("초기화 완료. 플레이어 함선 수", len(ctx.ships))
-}
 
 // 메인 함수
 main :: proc() {
-    init()
+    // 전역 게임 컨텍스트
+    ctx: Game_Context
+
+
+    init(&ctx)
+    defer clean_up(&ctx)
 
     // 메인 루프 
     running := true 
@@ -313,11 +172,9 @@ main :: proc() {
 	    im_sdl2.ProcessEvent(&event)
 	    #partial switch event.type {
 		case .QUIT:
-		running = false 
-		
-
+		running = false
 	    }
 	}
-	running = main_loop(&event, &ctx, dt)
+	running = running && main_loop(&event, &ctx, dt)
     }
 }
