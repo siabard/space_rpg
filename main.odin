@@ -251,10 +251,18 @@ main :: proc() {
     im.CreateContext(nil)
     defer im.DestroyContext(nil)
 
-
     // 키보드 및 게임패드 활성화 
     io := im.GetIO()
     io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
+
+    // 한국어 유니코드 범위 포인터 (U+AC00 ~ U+D7A3 등)
+    korean_ranges := im.FontAtlas_GetGlyphRangesKorean(io.Fonts)
+
+    // TTF 파일 경로 (Odin 문자열을 C호환 문자열로 변환)
+    font_path := cstring("assets/fonts/spoqa/SpoqaHanSansNeo-Medium.ttf")
+
+    // 폰트 로드 (가독성을 위해 18.0 설정 )
+    im.FontAtlas_AddFontFromFileTTF(io.Fonts, font_path, 18.0, nil, korean_ranges)
 
     // 기본 테마 
     im.StyleColorsDark(nil)
