@@ -89,7 +89,7 @@ check_encounters :: proc(ctx: ^Game_Context) {
     #partial switch state in ctx.current_state {
 
 	case State_Sailing: 
-	player_ship := &ctx.ships[0] // 0번 인덱스가 플레이어임 
+	player_ship := &ctx.ships[0] // 0 번 인덱스가 플레이어임 
 	
 	for ship in ctx.ships[1:] {
 
@@ -124,18 +124,18 @@ main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) -> bool 
 	im.Begin("Main Menu", nil, window_flags)
 	// 텍스트 가운데 맞춤 
 	im.SetCursorPosX(70)
-	im.Text("SPACE RPG - 대항해시대")
+	im.Text("SPACE RPG - Hey!")
 	im.Spacing()
 	im.Spacing()
 	im.Spacing()
 
 	// 시작버튼 
 	im.SetCursorPosX(50)
-	if im.Button("게임 시작 (Start Game)", im.Vec2{200, 40}) {
+	if im.Button("게임 시작 (Let's Go!)", im.Vec2{200, 40}) {
 
 	    // 게임 시작 버튼을 누름 
 
-	    // 플레이어 우주선 설정 (0번 우주선)
+	    // 플레이어 우주선 설정 (0 번 우주선)
 	    append(&ctx.ships, Ship {
 		id = 0,
 		position = {400, 300},
@@ -158,7 +158,7 @@ main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) -> bool 
     case State_Sailing:
 	update_physics(ctx, dt)
 
-	// 항해중 ESC를 누르면 메뉴 노출 
+	// 항해중 ESC 를 누르면 메뉴 노출 
 	im.SetNextWindowPos(im.Vec2{10, 10}, .Always)
 	im.Begin("항해 UI", nil, im.WindowFlags_NoDecoration)
 	im.Text("항해 중 ... (Sailing)")
@@ -198,7 +198,7 @@ main_loop :: proc(renderer: ^sdl.Renderer, ctx: ^Game_Context, dt: f32) -> bool 
 	sdl.RenderFillRect(renderer, &rect)
     }
 
-    // UI렌더링 
+    // UI 렌더링 
     im.Render()
     im_sdlrenderer2.RenderDrawData(im.GetDrawData(), renderer)
     sdl.RenderPresent(renderer)
@@ -258,7 +258,7 @@ main :: proc() {
     // 한국어 유니코드 범위 포인터 (U+AC00 ~ U+D7A3 등)
     korean_ranges := im.FontAtlas_GetGlyphRangesKorean(io.Fonts)
 
-    // TTF 파일 경로 (Odin 문자열을 C호환 문자열로 변환)
+    // TTF 파일 경로 (Odin 문자열을 C 호환 문자열로 변환)
     font_path := cstring("assets/fonts/spoqa/SpoqaHanSansNeo-Medium.ttf")
 
     // 폰트 로드 (가독성을 위해 18.0 설정 )
@@ -277,7 +277,7 @@ main :: proc() {
     // SDL 초기화 루틴 종료 
 
     // == Game Context 설정  ==
-    // 초기에는 MainMenu로 설정 
+    // 초기에는 MainMenu 로 설정 
     ctx := Game_Context {
 	current_state = State_MainMenu {},
     }
