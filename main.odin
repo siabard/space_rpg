@@ -8,6 +8,9 @@ import im "odin-imgui"
 import im_sdl2 "odin-imgui/imgui_impl_sdl2"
 import im_sdlrenderer2 "odin-imgui/imgui_impl_sdlrenderer2"
 
+// 전역 게임 컨텍스트
+var ctx: Game_Context
+
 // 1. 기초 데이터 및 타입 알리아스 
 Vec2 :: linalg.Vector2f32
 
@@ -288,9 +291,6 @@ init :: proc() {
 
     fmt.println("초기화 완료. 플레이어 함선 수", len(ctx.ships))
 }
-
-// 전역 게임 컨텍스트
-var ctx: Game_Context
 
 // 메인 함수
 main :: proc() {
