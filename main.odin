@@ -92,6 +92,11 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
 	}
 	im.End()
 
+	// 메인메뉴에서 ESC를 누르면 게임 종료 
+	if ctx.input.keys_pressed[sdl.SCANCODE_ESCAPE] {
+	    running = false
+	}
+
     case State_Sailing:
 	update_physics(ctx, dt)
 
@@ -162,6 +167,12 @@ main :: proc() {
 
     for running {
 
+	// ImGUI IO
+	io := im.GetIO()
+
+	// 이번 프레임의 Pressed/Released 리셋 
+	reset_input_per_frame(&ctx.input)
+
 	// Delta 계산 
 	current_time := sdl.GetTicks()
 	dt := f32(current_time - last_time) / 1000.0 
@@ -169,10 +180,58 @@ main :: proc() {
 
 	// A. 입력 및 이벤트 추러 (Polling)
 	for sdl.PollEvent(&event) {
+
+	    // ImGui 에서 먼저 이벤트를 받아 상태를 갱신 
 	    im_sdl2.ProcessEvent(&event)
+
+	    // 이벤트 가로채기 
+	    // ImGui 가 마우스를 점유 중인 경우에는 ImGui 가 이벤트를 먼저 처리함
+	    if io.WantCaptureMouse {
+		#partial switch event.type {
+		    case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP, .MOUSEMOTION, .MOUSEWHEEL:
+		    continue
+		}
+	    } 
+
+
+	    if io.WantCaptureKeyboard {
+
+		#partial switch event.type {
+		    case .KEYDOWN, .KEYUP, .TEXTINPUT:
+		    continue
+		}
+	    }
+
 	    #partial switch event.type {
 		case .QUIT:
 		running = false
+
+		case .KEYDOWN:
+		scancode := event.key.keysym.scancode
+		if event.key.repeat == 0 {
+		    ctx.input.keys_pressed[scancode] = true
+		    ctx.input.keys_held[scancode] = true
+		}
+
+		case .KEYUP:
+		scancode := event.key.keysym.scancode
+		ctx.input.keys_released[scancode] = true
+		ctx.input.keys_held[scancode] = false
+
+
+		case .MOUSEBUTTONDOWN:
+		btn := event.button.button 
+		if btn < NUM_MOUSE_BUTTONS {
+		    ctx.input.mouse_pressed[btn] = true
+		    ctx.input.mouse_held[btn] = true
+		}
+
+		case .MOUSEBUTTONUP:
+		btn := event.button.button
+		if btn < NUM_MOUSE_BUTTONS {
+		    ctx.input.mouse_released[btn] = true
+		    ctx.input.mouse_held[btn] = false		    
+		}
 	    }
 	}
 	running = running && main_loop(&event, &ctx, dt)

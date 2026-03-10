@@ -53,7 +53,7 @@ UI_State :: union {
 }
 
 State_MainMenu :: struct {}
-State_Sailing :: struct {}
+State_Sailing :: struct { is_menu_open: bool }
 State_Docked :: struct { docked_planet_id: u32}
 State_Combat :: struct { target_ship_id: u32, turn_timer: u32}
 
@@ -66,4 +66,5 @@ Game_Context :: struct {
     next_entity_id: u32,
     window: ^sdl.Window, // 윈도우
     renderer: ^sdl.Renderer, // 렌더러를 포함
+    input: Input_Manager,
 }

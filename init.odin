@@ -43,7 +43,6 @@ init :: proc(ctx: ^Game_Context) {
     im.CHECKVERSION()
     im.CreateContext(nil)
 
-
     // 키보드 및 게임패드 활성화 
     io := im.GetIO()
     io.ConfigFlags += { .NavEnableKeyboard, .NavEnableGamepad }
@@ -72,6 +71,9 @@ init :: proc(ctx: ^Game_Context) {
     ctx.ships = make([dynamic]Ship)
 
     ctx.planets = make([dynamic]Planet)
+
+    // 입력처리기 
+    init_input_manager(&ctx.input)
 
     fmt.println("초기화 완료. 플레이어 함선 수", len(ctx.ships))
 }
