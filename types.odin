@@ -67,4 +67,6 @@ Game_Context :: struct {
     window: ^sdl.Window, // 윈도우
     renderer: ^sdl.Renderer, // 렌더러를 포함
     input: Input_Manager,
+    dialog: Dialog_System,
+    fonts: Font_Textures,
 }

@@ -50,7 +50,7 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
 
     // B. 게임 로직 업데이트 
 
-    switch state in ctx.current_state {
+    switch &state in ctx.current_state {
     case State_MainMenu:
 	// -- 메인 메뉴 UI -- 
 	im.SetNextWindowPos(im.Vec2{250, 200}, .Always, im.Vec2{0.5, 0.5})
@@ -98,18 +98,79 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
 	}
 
     case State_Sailing:
-	update_physics(ctx, dt)
 
-	// 항해중 ESC 를 누르면 메뉴 노출 
-	im.SetNextWindowPos(im.Vec2{10, 10}, .Always)
-	im.Begin("항해 UI", nil, im.WindowFlags_NoDecoration)
-	im.Text("항해 중 ... (Sailing)")
-	if im.Button("메인 메뉴로 돌아가기") {
-	    // 배열 삭제 
-	    clear(&ctx.ships)
-	    ctx.current_state = State_MainMenu {}
+
+	// 대화 모드 활성시 물리 연산과 다른 입력 차단 
+	if ctx.dialog.is_active {
+	    // ESC를 누르면 대화모드 종료 
+	    if ctx.input.keys_pressed[sdl.SCANCODE_ESCAPE] {
+		ctx.dialog.is_active = false
+	    } else {
+		// 아무키(any key)검출로직 
+		any_pressed := false
+		for key_pressed, scancode in ctx.input.keys_pressed {
+		    if key_pressed && scancode != int(sdl.SCANCODE_ESCAPE) {
+			any_pressed = true
+			break;
+		    }
+		}
+
+		if ctx.input.mouse_pressed[sdl.BUTTON_LEFT] { 
+		    any_pressed = true
+		}
+
+		// 아무키나 눌렀을때 타이프라이터 제어 
+		if any_pressed {
+		    // 현재 페이지 글자가 충분히 많이 출력되면 다음 페이지 
+		    if ctx.dialog.visible_runes > 1000.0 {
+			ctx.dialog.current_page += 1
+			ctx.dialog.visible_runes = 0.0
+
+			// 임시: 3페이지 이상이면 대화 종료 
+			if ctx.dialog.current_page > 2 {
+			    ctx.dialog.is_active = false
+			}
+		    }  else {
+			// 글자 타이핑 도중이면 스킵 
+			ctx.dialog.visible_runes = 9999.0
+		    }
+		}
+	    }
+
+	    // 대화 모드 업데이트 타이머 
+	    ctx.dialog.visible_runes += ctx.dialog.speed * dt
+	} else if state.is_menu_open  {
+	    // 대화창 없고 일시 정지 메뉴 열기 
+	    // 항해중 ESC 를 누르면 메뉴 노출 
+	    im.SetNextWindowPos(im.Vec2{10, 10}, .Always)
+	    im.Begin("항해 UI", nil, im.WindowFlags_NoDecoration)
+	    im.Text("항해 중 ... (Sailing)")
+	    if im.Button("메인 메뉴로 돌아가기") {
+		// 배열 삭제 
+		clear(&ctx.ships)
+		ctx.current_state = State_MainMenu {}
+	    }
+	    im.End()
+	    
+	    if ctx.input.keys_pressed[sdl.SCANCODE_ESCAPE] {
+		state.is_menu_open = false
+	    }
+	    
+	} else {
+	    // T를 누르면 대화 스크립트 
+	    if ctx.input.keys_pressed[sdl.SCANCODE_T] {
+		long_text := "우주력 2026년...\n이곳은 은하계 외곽의 이름 모를 항성계다.\n\n우리는 이곳에서 새로운 자원을 찾고,\n우주 해적들의 위협으로부터 살아남아야 한다.\n\n가혹한 우주지만, 아직 희망은 있다...\n\n(아무 키나 눌러 다음으로)"
+		start_dialog(&ctx.dialog, long_text)
+	    }
+
+	    // ESC키를 누르면 일시 정지한 메뉴 
+	    if ctx.input.keys_pressed[sdl.SCANCODE_ESCAPE] {
+		state.is_menu_open = true
+	    }
+	    // 순수 항해메뉴에서만 우주선 물리시스템 가동 
+	    update_physics(ctx, dt)
 	}
-	im.End()
+
 
     case State_Docked:
 	//
@@ -124,21 +185,31 @@ main_loop :: proc(event: ^sdl.Event, ctx: ^Game_Context, dt: f32) -> bool {
 
 
     // 함선 렌더링 
-    for &ship in ctx.ships {
-	if ship.faction == .Player {
-	    sdl.SetRenderDrawColor(ctx.renderer, 0, 255, 100, 255) // 민트색 (플레이어) 
-	} else {
-	    sdl.SetRenderDrawColor(ctx.renderer, 255, 50, 50, 255) // 붉은색 (적)
-	}
+    if _, is_sailing := ctx.current_state.(State_Sailing); is_sailing {
+	for &ship in ctx.ships {
+	    if ship.faction == .Player {
+		sdl.SetRenderDrawColor(ctx.renderer, 0, 255, 100, 255) // 민트색 (플레이어) 
+	    } else {
+		sdl.SetRenderDrawColor(ctx.renderer, 255, 50, 50, 255) // 붉은색 (적)
+	    }
 
-	rect := sdl.Rect {
-	    x = i32(ship.position.x) - 10,
-	    y = i32(ship.position.y) - 10,
-	    w = 20, 
-	    h = 20,
+	    rect := sdl.Rect {
+		x = i32(ship.position.x) - 10,
+		y = i32(ship.position.y) - 10,
+		w = 20, 
+		h = 20,
+	    }
+	    sdl.RenderFillRect(ctx.renderer, &rect)
 	}
-	sdl.RenderFillRect(ctx.renderer, &rect)
+	
     }
+
+    // 대화 
+    if ctx.dialog.is_active {
+	render_dialog(&ctx.dialog, ctx.renderer, ctx.fonts)
+    }
+
+    
 
     // UI 렌더링 
     im.Render()
