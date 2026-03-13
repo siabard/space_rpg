@@ -43,33 +43,6 @@ load_texture :: proc(renderer: ^sdl.Renderer, path: string) -> (texture: ^sdl.Te
 }
 
 
-// 폰트 전용 텍스쳐 초기화 함수 
-load_font_textures :: proc(renderer: ^sdl.Renderer) -> (fonts: Font_Textures, ok: bool) {
-    // 1. SDL_Image PNG 서브시스템 초기화 
-    img_flags := img.INIT_PNG | img.INIT_JPG;
-    if img.Init(img_flags) & img_flags != img_flags {
-	fmt.eprintfln("SDL2_Image 초기화 실패: %s", sdl.GetError())
-	return fonts, false
-    }
-
-    // ascii 폰트 로드 
-    ascii_tex, ascii_ok := load_texture(renderer, "assets/fonts/ascii.png" )
-    if !ascii_ok {
-	return fonts, false
-    }
-
-    // hangul 포늩 로드 
-    hangul_tex, hangul_ok := load_texture(renderer, "assets/fonts/hangul.png" )
-    if !hangul_ok {
-	return fonts, false
-    }
-
-    fonts.ascii = ascii_tex
-    fonts.hangul = hangul_tex
-
-    return fonts, true
-}
-
 
 init :: proc(ctx: ^Game_Context) {
     fmt.println("초기화 중...")
@@ -77,6 +50,13 @@ init :: proc(ctx: ^Game_Context) {
     // SDL 초기화 루틴 
     if sdl.Init(sdl.INIT_VIDEO) != 0 {
 	fmt.eprintfln("SDL 초기화 실패 :%s", sdl.GetError())
+	return
+    }
+
+    // SDL_Image PNG 서브시스템 초기화 
+    img_flags := img.INIT_PNG | img.INIT_JPG;
+    if img.Init(img_flags) & img_flags != img_flags {
+	fmt.eprintfln("SDL2_Image 초기화 실패: %s", sdl.GetError())
 	return
     }
 
@@ -136,7 +116,16 @@ init :: proc(ctx: ^Game_Context) {
     ctx.planets = make([dynamic]Planet)
 
     // 폰트파일 읽어들이기 (sdl2_image)
-    fonts, fonts_ok := load_font_textures(ctx.renderer)
+    // font를 cfg 파일에서 읽어들이도록 변경 
+    // fonts, fonts_ok := load_font_textures(ctx.renderer)
+    
+    init_asset_manager(&ctx.assets, ctx.renderer, "assets/assets.cfg")
+    
+    fonts := Font_Textures {
+
+	ascii = get_texture(&ctx.assets, "font_ascii"),
+	hangul = get_texture(&ctx.assets, "font_hangul")
+    }
     ctx.fonts = fonts
 
     // 입력처리기 
@@ -149,6 +138,9 @@ init :: proc(ctx: ^Game_Context) {
 clean_up :: proc(ctx: ^Game_Context) {
 
     fmt.println("closing program...")
+
+    // 에셋 매니저 삭제
+    cleanup_asset_manager(&ctx.assets)
 
     // 텍스쳐 삭제 
 

@@ -69,4 +69,5 @@ Game_Context :: struct {
     input: Input_Manager,
     dialog: Dialog_System,
     fonts: Font_Textures,
+    assets: Asset_Manager,
 }

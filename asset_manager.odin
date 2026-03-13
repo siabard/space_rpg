@@ -13,9 +13,9 @@ init_asset_manager :: proc(manager: ^Asset_Manager, renderer: ^sdl.Renderer, con
     manager.textures = make(map[string]^sdl.Texture)
 
     // 설정 파일 읽기 
-    data, ok := os.read_entire_file(config_path, context.allocator)
+    data, err := os.read_entire_file(config_path, context.allocator)
 
-    if !ok {
+    if err != nil {
 	fmt.eprintfln("에셋 설정 파일을 읽을 수 없습니다: %s", config_path)
 	return false
     }
@@ -29,7 +29,7 @@ init_asset_manager :: proc(manager: ^Asset_Manager, renderer: ^sdl.Renderer, con
 
     for line in lines {
 	trimmed := strings.trim_space(line)
-	if len(trimmed) == 0 || trimmed[0] == "#" do continue
+	if len(trimmed) == 0 || trimmed[0] == '#' do continue
 
 	parts := strings.fields(trimmed, context.temp_allocator)
 	if len(parts) != 2 do continue
@@ -61,4 +61,9 @@ cleanup_asset_manager :: proc(manager: ^Asset_Manager) {
 
     delete(manager.textures)
 
+}
+
+// 에셋을 가져오는 유틸리티 헬퍼 
+get_texture :: proc(manager: ^Asset_Manager, name: string) -> ^sdl.Texture {
+    return manager.textures[name] // 없으면 nil 반환
 }
