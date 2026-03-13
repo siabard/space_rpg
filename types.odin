@@ -57,6 +57,22 @@ State_Sailing :: struct { is_menu_open: bool }
 State_Docked :: struct { docked_planet_id: u32}
 State_Combat :: struct { target_ship_id: u32, turn_timer: u32}
 
+Asset_Manager :: struct {
+    textures: map[string]^sdl.Texture
+}
+
+
+// 1. 데이터 구조체 정의 (해시맵 대신 명시적 포인터 구조체 사용)
+Font_Textures :: struct {
+    ascii:  ^sdl.Texture,
+    hangul: ^sdl.Texture,
+}
+
+
+Atlas :: struct {
+    frames: map[string][]sdl.Rect,
+}
+
 // 4. 전역 게임 컨텍스트 
 // 모든 게임 상태를 한 곳에 모은다. 
 Game_Context :: struct {
@@ -70,4 +86,6 @@ Game_Context :: struct {
     dialog: Dialog_System,
     fonts: Font_Textures,
     assets: Asset_Manager,
+    atlas: Atlas,
 }
+

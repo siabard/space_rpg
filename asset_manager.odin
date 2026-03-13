@@ -5,9 +5,6 @@ import "core:os"
 import "core:fmt"
 import "core:strings"
 
-Asset_Manager :: struct {
-    textures: map[string]^sdl.Texture
-}
 
 init_asset_manager :: proc(manager: ^Asset_Manager, renderer: ^sdl.Renderer, config_path: string) -> bool {
     manager.textures = make(map[string]^sdl.Texture)

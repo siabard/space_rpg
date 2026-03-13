@@ -128,6 +128,9 @@ init :: proc(ctx: ^Game_Context) {
     }
     ctx.fonts = fonts
 
+    // 아틀라스 설정 
+    init_atlas(&ctx.atlas)
+
     // 입력처리기 
     init_input_manager(&ctx.input)
 
@@ -138,6 +141,8 @@ init :: proc(ctx: ^Game_Context) {
 clean_up :: proc(ctx: ^Game_Context) {
 
     fmt.println("closing program...")
+    // 아틀라스 해제 
+    cleanup_atlas(&ctx.atlas)
 
     // 에셋 매니저 삭제
     cleanup_asset_manager(&ctx.assets)

@@ -2,12 +2,6 @@ package space_rpg
 
 import sdl "vendor:sdl2"
 
-// 1. 데이터 구조체 정의 (해시맵 대신 명시적 포인터 구조체 사용)
-Font_Textures :: struct {
-    ascii:  ^sdl.Texture,
-    hangul: ^sdl.Texture,
-}
-
 // 2. ASCII 렌더링 로직 (포인터 접근으로 O(1) 처리)
 draw_ascii :: proc(renderer: ^sdl.Renderer, texture: ^sdl.Texture, x, y: i32, r: rune) {
     code := i32(r)
